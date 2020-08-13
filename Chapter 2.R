@@ -1,3 +1,4 @@
+#Finished
 #Follows An Introduction to Statistical Learning
   #with Applications in R
   #By Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani
