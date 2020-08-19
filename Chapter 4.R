@@ -267,3 +267,63 @@ PlotPower <- function(x, a){
 PlotPower(1:10, 3)
 
 #13)
+data(Boston)
+crim_med <- median(Boston$crim)
+Boston01 <- Boston %>%
+  mutate(crim01 = ifelse(crim > crim_med, 1, 0))
+
+set.seed(1)
+index.bos <- sample(1:length(Boston01$crim01), size = trunc(0.5 * length(Boston01$crim01)))
+train.bos <- Boston01 %>%
+  filter(row_number() %in% index.bos)
+test.bos <- Boston01 %>%
+  filter(!(row_number() %in% index.bos))
+
+ggpairs(Boston01, columns = 2:15)
+
+# i will include variables with corr > 0.5 with crim01
+# indus, nox, age, dis, rad, tax
+
+
+# LOGISTIC REGRESSION
+fit10.log <- glm(crim01 ~ indus + nox + age + dis + rad + tax,
+                 data = train.bos,
+                 family = "binomial")
+summary(fit10.log)
+pred10.log <- predict(fit10.log, test.bos, type = "response")
+pred10.log <- ifelse(pred10.log > 0.5, 1, 0)
+table(pred10.log, test.bos$crim01)
+mean(pred10.log == test.bos$crim01)
+# 88.54% accuracy
+
+# LDA
+fit11.lda <- lda(crim01 ~ indus + nox + age + dis + rad + tax,
+                 data = train.bos,
+                 family = "binomial")
+pred11.lda <- predict(fit11.lda, test.bos)$class
+table(pred11.lda, test.bos$crim01)
+mean(pred11.lda == test.bos$crim01)
+# 84.19% accuracy
+
+# QDA
+fit12.qda <- qda(crim01 ~ indus + nox + age + dis + rad + tax,
+                 data = train.bos,
+                 family = "binomial")
+pred12.qda <- predict(fit12.qda, test.bos)$class
+table(pred12.qda, test.bos$crim01)
+mean(pred12.qda == test.bos$crim01)
+# 90.11% accuracy
+
+# KNN
+fit13.knn <- knn(train.bos[,c(3, 5, 7:10, 15)],
+                 test.bos[,c(3, 5, 7:10, 15)], 
+                 cl = test.bos$crim01,
+                 k = 20)
+table(fit13.knn, test.bos$crim01)
+mean(fit13.knn == test.bos$crim01)
+# 78.66% accuracy
+
+
+# The best model based off of its testing sample accuracy would be the QDA
+
+
