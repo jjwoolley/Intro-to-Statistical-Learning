@@ -12,6 +12,8 @@ library("ISLR")
 library("tidyverse")
 library("tidymodels")
 library("GGally")
+library("boot")
+
 
 
 ##### CONCEPTUAL----------------------------------------------------------------
@@ -42,7 +44,9 @@ library("GGally")
 # 0.632139
 
 #2g)
-ggplot(data = NULL, aes(x = 1:10000, y = 1 - ((x - 1) / x)^x)) + 
+x_data <- 1:10000
+y_data <- 1 - ((x_data - 1) / x_data)^x_data
+ggplot(data = NULL, aes(x = x_data, y = y_data)) + 
   geom_point() + 
   theme_bw()
 
@@ -231,7 +235,7 @@ y <- x - 2 * x^2 + rnorm(100)
 ggplot(data = NULL, aes(x = x, y = y)) + 
   geom_point() +
   theme_bw()
-# appears to have a negative quadratic relationship. An upside down U
+# appears to have a quadratic relationship. Upside down U
 
 #8c)
 set.seed(1)
@@ -311,7 +315,45 @@ data(Boston)
 mu.hat <- mean(Boston$medv)
 
 #9b)
+se.mu.hat <- sd(Boston$medv) / sqrt(length(Boston$medv))
+# 0.40886
 
+#9c)
+set.seed(1)
+boot.fn <- function(d_set, obs_index){
+  return(mean(d_set[obs_index]))
+}
+boot.bos <- boot(Boston$medv, boot.fn, 1000)
+boot.bos
+# 0.41066 which is very close to the SE i got in (9b)
 
+#9d)
+low_CI  <- boot.bos$t0 - 2 * 0.41066
+high_CI <- boot.bos$t0 + 2 * 0.41066
+t.test(Boston$medv)
+# These two results are extremely close to each other
 
+#9e)
+med.medv <- median(Boston$medv)
 
+#9f)
+set.seed(1)
+boot.fn <- function(d_set, obs_index){
+  return(median(d_set[obs_index]))
+}
+boot(Boston$medv, boot.fn, 1000)
+# 0.3778075 which is relatively close to the SE of the mean
+
+#9g)
+quantile(Boston$medv, 0.1)
+# 12.75
+
+#9h)
+set.seed(1)
+boot.fn <- function(d_set, obs_index){
+  return(quantile(d_set[obs_index],0.1))
+}
+boot(Boston$medv, boot.fn, 1000)
+# 0.47675 
+# this is small relative to the value of the quantile, but slightly larger than the
+#   SE of the mean and median
