@@ -46,16 +46,42 @@ library("boot")
 
 
 #3a)
-# 
+# (iv) increasing S givs us a more flexible model which will allow the model to 
+#        fit the data closer
 
 #3b)
-#
+# (ii) When s = 0, all betas are 0 so when betas are allowed to increase then the model
+#       overall will start to fit better until it leads to overfitting
 
 #3c)
-#
+# (iii) Variance will always increase as the model becomes more flexible
 
 #3d)
-#
+# (iv) Bias will always decrease as the model becomes more flexible
 
 #3e)
-#
+# (v) This is unrelated to S (it is constant)
+
+
+#4a)
+# (iii) As lambda increases, the model becomes more restrictive which reduces training RSS
+
+#4b)
+# (ii) As lambda increases, test RSS will decrease and then start to increase when it overfits
+
+#4c)
+# (iv) As lambda increases and goes to infinity, all betas will reduce to 0
+
+#4d)
+# (iii) Opposite of 4c
+
+#4e)
+# (v) This is unrelated to S (it is constant)
+
+
+#5)
+# Done on paper
+
+
+#6a)
+# 
