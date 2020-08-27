@@ -13,7 +13,7 @@ library("tidyverse")
 library("tidymodels")
 library("GGally")
 library("boot")
-
+library("leaps")
 
 
 ##### CONCEPTUAL----------------------------------------------------------------
@@ -84,4 +84,91 @@ library("boot")
 
 
 #6a)
-# 
+# p=1, x axis b1, choice of y1 and lambda >0
+#plot prove 6.12 is solved by 6.14
+
+lambda <- 2
+
+B1 <- -10:10
+y.point <- 3
+y <- (y.point - B1)^2 + lambda * B1^2
+
+beta.est <- y.point / (1 + lambda)
+
+sixA <- tibble(cbind(y, B1, beta.est))
+
+
+ggplot(data = sixA, aes(x = B1, y = y)) +
+  geom_line() + 
+  geom_point(data = sixA, 
+             aes(x = beta.est, y = (y.point - beta.est)^2 + lambda * beta.est^2),
+                           color = "red")
+
+#6b)
+
+B2 <- -10:10
+
+y <- (y.point - B2)^2 + lambda * abs(B1)
+
+beta.est <- ifelse(y.point > lambda / 2, y.point - lambda / 2,
+                   ifelse(y.point < - lambda / 2, y.point + lambda / 2,
+                          ifelse(abs(y.point) <= lambda / 2), 0, "error"))
+
+
+sixB <- tibble(cbind(y, B2, beta.est))
+
+ggplot(data = sixB, aes(x = B2, y = y)) + 
+  geom_line() +
+  geom_point(data = sixB, 
+             aes(x = beta.est, y = (y.point - beta.est)^2 + lambda * abs(beta.est)),
+             color = "red")
+
+#7)
+# Done on paper
+
+#8a)
+X <- rnorm(100)
+e <- rnorm(100)
+
+#8b)
+Y <- 10 + 4 * X + 3 * X^2 + 7 * X^3 + e
+
+
+#8c)
+data1 <- data.frame(y = Y, x = X)
+select1.model <- regsubsets(y ~ poly(x, 10, raw = T), 
+                            nvmax = 10,
+                            data = data1)
+select1.summ <- summary(select1.model)
+select1.summ$bic
+# this shows the three var model as the best (although it is close)
+select1.summ$adjr2
+# this shows four var as the best
+select1.summ$cp
+
+data1.subs <- tibble(bic = select1.summ$bic,
+                     adjr2 = select1.summ$adjr2,
+                     cp = select1.summ$cp)
+ggplot(data = data1.subs) +
+  geom_line(data = data1.subs, aes(x = 1:10, y = bic), color = "red") + 
+  geom_line(data = data1.subs, aes(x = 1:10, y = cp), color = "blue") +
+  geom_line(data = data1.subs, aes(x = 1:10, y = adjr2 * 1000), color = "yellow")
+
+sd# this shows the three var model as the best
+coef(select1.model, 3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
