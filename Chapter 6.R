@@ -15,6 +15,7 @@ library("GGally")
 library("boot")
 library("leaps")
 library("glmnet")
+library("pls")
 
 ##### CONCEPTUAL----------------------------------------------------------------
 
@@ -332,11 +333,173 @@ length(coef9.lasso[coef9.lasso != 0])
 
 
 #9e) PCR
+fit10.pcr <- pcr(Apps ~., data = train.college, scale = T, validation = "CV")
+summary(fit10.pcr)
+validationplot(fit10.pcr, val.type = "MSEP")
+pred10.pcr <- tibble(predict(fit10.pcr, test.college, ncomp = 17))
+mse10 <- map((test.college$Apps - pred10.pcr)^2, mean)
+
+
+#9f) PLS
+fit11.pls <- plsr(Apps ~., data = train.college, scale = T, validation = "CV")
+summary(fit11.pls)
+validationplot(fit11.pls, val.type = "MSEP")
+pred11.pls <- tibble(predict(fit11.pls, test.college, ncomp = 9))
+mse11 <- map((test.college$Apps - pred11.pls)^2, mean)
+
+#9g)
+# MSE's from each method
+mse7  #lm
+mse8  # ridge:  
+mse9  # lasso:  
+mse10 # PCR:     (same as lm since we use all M's/ncomp)
+mse11 # PLS:    
 
 
 
+#10a)
+X <- matrix(rnorm(1000*20), 1000, 20)
+eps <- rnorm(1000)
+b <- rnorm(20)
+b[2:5] <- 0
+y <- X %*% b + eps
+
+#10b)
+data10 <- data.frame(y, X)
+data10.split <- initial_split(data10, prop = 0.9)
+data10.train <- training(data10.split)
+data10.test <- testing(data10.split)
+
+#10c) best subset selection on the training set
+fit12.best <- regsubsets(y~., data10.train,nvmax = 20)
+fit12.summ <- summary(fit12.best)
+which.max(fit12.summ$adjr2)
+which.min(fit12.summ$cp)
+which.min(fit12.summ$bic)
+
+train12.mat <- model.matrix(y ~., data10.train, nvmax = 20)
+ts.results <- rep(NA, 20)
+for(i in 1:20) {
+  cf <- coef(fit12.best, id = i)
+  pred <- train12.mat[, names(cf)] %*% cf
+  ts.results[i] <- mean((pred - data10.train$y)^2)
+}
+
+ggplot(data = NULL, aes(x = 1:20, y = ts.results)) +
+  geom_point() +
+  geom_line() +
+  xlab("Number of predictors") + 
+  ylab("Mean Squared Error (MSE)") + 
+  theme_bw()
+
+#10d)
+test12.mat <- model.matrix(y ~., data10.test, nvmax = 20)
+test.mse <- rep(NA, 20) 
+for(i in 1:20) {
+  cf <- coef(fit12.best, id = i)
+  pred <- test12.mat[, names(cf)] %*% cf
+  test.mse[i] <- mean((pred - data10.test$y)^2)
+}
+
+ggplot(data = NULL, aes(x = 1:20, y = test.mse)) +
+  geom_point() +
+  geom_line() +
+  xlab("Number of predictors") + 
+  ylab("Mean Squared Error (MSE)") + 
+  theme_bw()
+
+#10e)
+# the test mse is smallest in the 12 predictor model
+# this is about where the training mse is close to its lowest and levels off
+
+#10f)
+coef(fit12.best, id = 12)
+b
+# they are very close, the model did a great job in estimating the coefficients
+
+#10g)
+
+err <- rep(NA, 20)
+x_cols <- colnames(X, do.NULL = F, prefix = "X")
+for (i in 1:20) {
+  cf <- coef(fit12.best, id = i)
+  err[i] <- sqrt(sum((b[x_cols %in% names(cf)] 
+                      - cf[names(cf) %in% x_cols])^2)
+                 + sum(b[!(x_cols %in% names(cf))])^2)
+}
+err
+
+ggplot(data = NULL, aes(x = 1:20, y = err)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  xlab("Nu. of Coefficients") +
+  ylab("Error b/w estimated coefficients and true")
 
 
+#11a)
+# predict per capita crime rate (crim)
+data(Boston)
+Boston <- Boston %>%
+  mutate(chas = factor(chas))
+boston.split <- initial_split(Boston, prop = 0.5, strata = crim)
+boston.train <- training(boston.split)
+boston.test <- testing(boston.split)
+
+# best subset selection
+fit13.bss <- regsubsets(crim ~., data = boston.train, nvmax = 13)
+fit13.summ <- summary(fit13.bss)
+
+x <- lm(crim~rad + medv + rm, data = boston.train)
+xx <- predict(x, boston.test)
+testttt <- mean((boston.test$crim - xx)^2)
+
+# code from textbook
+predict.regsubsets <- function (object ,newdata ,id ,...){
+   form <- as.formula(object$call[[2]])
+   mat <- model.matrix(form, newdata )
+   coefi <- coef(object, id = id)
+   xvars <- names (coefi)
+   mat[, xvars] %*% coefi
+}
+
+err.bss <- rep(NA, ncol(boston.train) - 1)
+for(i in 1:(ncol(boston.train) - 1)) {
+  pred.bss <- predict(fit13.bss, boston.test, id = i)
+  err.bss[i] <- mean((boston.test$crim - pred.bss)^2)
+}
+err.bss
 
 
+# ridge
+x.train.ridge <- model.matrix(crim ~., data = boston.train)[,-1]
+x.test.ridge <- model.matrix(crim ~., data = boston.test)[,-1]
+fit14.ridge <- cv.glmnet(x = x.train.ridge, y = boston.train$crim, alpha = 0)
+fit14.ridge$lambda.min
 
+pred14.ridge <- predict(fit14.ridge, 
+                        s = fit14.ridge$lambda.min, 
+                        newx = x.test.ridge)
+err.ridge <- mean((boston.test$crim = pred14.ridge)^2)
+err.ridge
+
+# lasso
+fit15.lasso <- cv.glmnet(x = x.train.ridge, y = boston.train$crim, alpha = 1)
+fit15.lasso$lambda.min
+
+pred15.lasso <- predict(fit15.lasso, 
+                        s = fit15.lasso$lambda.min, 
+                        newx = x.test.ridge)
+err.lasso <- mean((boston.test$crim = pred15.lasso)^2)
+err.lasso
+
+# pcr
+y <- boston.test$crim
+yy <- pred16.pcr
+xx <- unlist(flatten(pred16.pcr))
+fit16.pcr <- pcr(crim ~., data = boston.train, scale = T, validation = "CV")
+summary(fit16.pcr)
+validationplot(fit16.pcr, val.type = "MSEP")
+
+#11b)
+# I would use the 
