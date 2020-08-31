@@ -450,9 +450,6 @@ boston.test <- testing(boston.split)
 fit13.bss <- regsubsets(crim ~., data = boston.train, nvmax = 13)
 fit13.summ <- summary(fit13.bss)
 
-x <- lm(crim~rad + medv + rm, data = boston.train)
-xx <- predict(x, boston.test)
-testttt <- mean((boston.test$crim - xx)^2)
 
 # code from textbook
 predict.regsubsets <- function (object ,newdata ,id ,...){
@@ -464,7 +461,7 @@ predict.regsubsets <- function (object ,newdata ,id ,...){
 }
 
 err.bss <- rep(NA, ncol(boston.train) - 1)
-for(i in 1:(ncol(boston.train) - 1)) {
+for(i in 1:(ncol(boston.test) - 1)) {
   pred.bss <- predict(fit13.bss, boston.test, id = i)
   err.bss[i] <- mean((boston.test$crim - pred.bss)^2)
 }
@@ -480,7 +477,7 @@ fit14.ridge$lambda.min
 pred14.ridge <- predict(fit14.ridge, 
                         s = fit14.ridge$lambda.min, 
                         newx = x.test.ridge)
-err.ridge <- mean((boston.test$crim = pred14.ridge)^2)
+err.ridge <- mean((boston.test$crim - pred14.ridge)^2)
 err.ridge
 
 # lasso
@@ -490,16 +487,30 @@ fit15.lasso$lambda.min
 pred15.lasso <- predict(fit15.lasso, 
                         s = fit15.lasso$lambda.min, 
                         newx = x.test.ridge)
-err.lasso <- mean((boston.test$crim = pred15.lasso)^2)
+err.lasso <- mean((boston.test$crim - pred15.lasso)^2)
 err.lasso
 
 # pcr
-y <- boston.test$crim
-yy <- pred16.pcr
-xx <- unlist(flatten(pred16.pcr))
 fit16.pcr <- pcr(crim ~., data = boston.train, scale = T, validation = "CV")
 summary(fit16.pcr)
 validationplot(fit16.pcr, val.type = "MSEP")
 
+pred16.pcr <- predict(fit16.pcr, boston.test, ncomp = 13)[1:252]
+err.pcr <- mean((pred16.pcr - boston.test$crim)^2)
+
+err.pcr
+
+err.bss
+min(err.bss)
+err.ridge
+err.lasso
+err.pcr
+
 #11b)
-# I would use the 
+# I would use the lasso model because it consistently has the lowest mse
+predict(fit15.lasso, s = fit15.lasso$lambda.min, type = "coefficients")
+
+#11c)
+# no, it does not include the variables nox, age, or tax
+
+
