@@ -16,6 +16,7 @@ library("GGally")
 library("boot")
 library("leaps")
 library("glmnet")
+library("gam")
 
 
 ### Conceptual------------------------------------------------------------------
@@ -80,25 +81,86 @@ ggplot(data = NULL, aes(x = X.4, y = Y.4)) +
 
 ### Applied---------------------------------------------------------------------
 
+#6a)
+data(Wage)
+# plynomial regression to predict wage using age
+# use cross-validation to select optimal degree d for the polynomial
+
+set.seed(3)
+
+deltas <- rep(NA, 10)
+for(i in 1:10) {
+  fit <- glm(wage ~ poly(age, i), data = Wage)
+  deltas[i] <- cv.glm(Wage, fit, K = 10)$delta[1]
+}
+deltas
+which.min(deltas)
+
+fit.6a.poly1 <- lm(wage ~ poly(age, 1), data = Wage)
+fit.6a.poly2 <- lm(wage ~ poly(age, 2), data = Wage)
+fit.6a.poly3 <- lm(wage ~ poly(age, 3), data = Wage)
+fit.6a.poly4 <- lm(wage ~ poly(age, 4), data = Wage)
+fit.6a.poly5 <- lm(wage ~ poly(age, 5), data = Wage)
+fit.6a.poly6 <- lm(wage ~ poly(age, 6), data = Wage)
+fit.6a.poly7 <- lm(wage ~ poly(age, 7), data = Wage)
+fit.6a.poly8 <- lm(wage ~ poly(age, 8), data = Wage)
+fit.6a.poly9 <- lm(wage ~ poly(age, 9), data = Wage)
+fit.6a.poly10 <- lm(wage ~ poly(age, 10), data = Wage)
+anova(fit.6a.poly1, fit.6a.poly2, fit.6a.poly3, fit.6a.poly4, fit.6a.poly5, 
+      fit.6a.poly6, fit.6a.poly7, fit.6a.poly8, fit.6a.poly9, fit.6a.poly10)
+
+# the cross-validation says the poly(5) model is the best
+# anova says that the poly(3) or poly(4) models are the best
+
+agelims = range(Wage$age)
+age.grid = seq(from = agelims[1], to = agelims[2])
+
+pred.6a.poly4 <- predict(fit.6a.poly4, data.frame(age=age.grid))
+tx <- cbind(pred.6a.poly4, age.grid)
 
 
+ggplot(data = NULL, aes(x = 18:80, y = pred.6a.poly4)) + 
+  geom_line(color = "red") +
+  geom_point(data = Wage, aes(x = age, y = wage), alpha = 0.1) +
+  theme_bw() +
+  xlab("Age") +
+  ylab("Wage")
+
+#6b)
+
+set.seed(1)
 
 
+cvs <- rep(NA, 10)
+for(i in 2:10) {
+  Wage$age.cut <- cut(Wage$age, i)
+  fit <- glm(wage ~ age.cut, data = Wage)
+  cvs[i] <- cv.glm(Wage, fit, K = 10)$delta[1]
+}
+cvs
+which.min(cvs)
+# 8 cuts is optimal
+
+fit.6b.step8 <- glm(wage ~ cut(age, 8), data = Wage)
+pred.6b.step8 <- predict(fit.6b.step8, data.frame(age=age.grid))
+ggplot(data = NULL, aes(x = 18:80, y = pred.6b.step8)) +
+  geom_line(color = "blue") +
+  geom_point(data = Wage, aes(x = age, y = wage), alpha = 0.1) +
+  geom_line(data = NULL, aes(x = 18:80, y = pred.6a.poly4), color = "red") +
+  theme_bw() +
+  xlab("Age") +
+  ylab("Wage")
 
 
+#7)
+plot(Wage$maritl, Wage$wage)
+plot(Wage$jobclass, Wage$wage)
+plot(Wage$education, Wage$wage)
 
-
-
-
-
-
-
-
-
-
-
-
-
+fit.7.cut <- lm(wage ~ cut(age, 4) + maritl + jobclass + education, data = Wage)
+fit.7.gam <- gam(wage ~ s(age, 4) + maritl + jobclass + education, data = Wage)
+summary(fit.7.cut)
+summary(fit.7.gam)
 
 
 
