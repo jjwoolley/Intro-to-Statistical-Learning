@@ -158,9 +158,118 @@ plot(Wage$jobclass, Wage$wage)
 plot(Wage$education, Wage$wage)
 
 fit.7.cut <- lm(wage ~ cut(age, 4) + maritl + jobclass + education, data = Wage)
-fit.7.gam <- gam(wage ~ s(age, 4) + maritl + jobclass + education, data = Wage)
+fit.7.gam2 <- gam(wage ~ s(age, 2) + maritl + jobclass + education, data = Wage)
+fit.7.gam3 <- gam(wage ~ s(age, 3) + maritl + jobclass + education, data = Wage)
+fit.7.gam4 <- gam(wage ~ s(age, 4) + maritl + jobclass + education, data = Wage)
+fit.7.gam5 <- gam(wage ~ s(age, 5) + maritl + jobclass + education, data = Wage)
+
 summary(fit.7.cut)
-summary(fit.7.gam)
+summary(fit.7.gam2)
+anova(fit.7.gam2, fit.7.gam3, fit.7.gam4, fit.7.gam5)
+# should go with either the df of 2 or 3
+par(mfrow = c(2, 2))
+plot(fit.7.gam3, se = T)
+
+
+pred.7.cut <- predict(fit.7.cut, Wage)
+pred.7.gam3 <- predict(fit.7.gam3, Wage)
+pred.7.gam2 <- predict(fit.7.gam2, Wage)
+
+mean((pred.7.cut - Wage$wage)^2)
+mean((pred.7.gam3 - Wage$wage)^2)
+mean((pred.7.gam2 - Wage$wage)^2)
+
+ggplot(data = Wage, aes(x = age, y = wage)) + 
+  geom_point(alpha = 0.1) +
+  geom_line(data = NULL, aes(x = age, y = pred.7.cut), color = "red") +
+  geom_line(data = NULL, aes(x = age, y = pred.7.gam3), color = "blue")
+# this graph does not tell us much since there are other vars not included
+
+
+#8)
+data(Auto)
+ggpairs(Auto[,-9])
+# appears to be some non linearity between mpg and horsepower/weight
+fit.8.gam4 <- gam(mpg ~ s(horsepower, 4) + s(weight, 4) + displacement + year + origin, 
+                 data = Auto)
+fit.8.gam3 <- gam(mpg ~ s(horsepower, 3) + s(weight, 4) + displacement + year + origin, 
+                  data = Auto)
+anova(fit.8.gam3, fit.8.gam4)
+# no reason to go from 3 to 4
+
+fit.8.poly3 <- lm(mpg ~ poly(horsepower, 3, raw = T) + poly(weight, 3, raw = T) + 
+                    displacement + year + origin, data = Auto)
+fit.8.lm <- lm(mpg ~ horsepower + weight + displacement + year +origin, data = Auto)
+summary(fit.8.lm)
+summary(fit.8.poly3)
+plot(fit.8.gam3)
+
+
+
+
+#9a)
+data(Boston)
+fit.9.poly <- lm(nox ~ poly(dis, 3, raw = T), data = Boston)
+summary(fit.9.poly)
+
+pred.9.poly <- predict(fit.9.poly, Boston)
+
+par(mfrow = c(2, 2))
+plot(fit.9.poly)
+ggplot(data = NULL, aes(x = Boston$dis, y = pred.9.poly)) +
+  geom_line() +
+  theme_bw() +
+  xlab("dis") +
+  ylab("nox-hat")
+
+#9b)
+rss.9.poly <- rep(NA, 10)
+for(i in 1:10) {
+  fit <- lm(nox ~ poly(dis, i, raw = T), data = Boston)
+  rss.9.poly[i] <- sum(fit$residuals^2)
+}
+ggplot(data = NULL, aes(x = 1:10, y = rss.9.poly)) +
+  geom_line() +
+  theme_bw()
+# sharp decreases around 3 and again around 8
+
+
+#9c)
+cv.9c.fit <- rep(NA, 10)
+
+for(i in 1:10){
+  fit <- glm(nox ~ poly(dis, i, raw = T), data = Boston)
+  cv.9c.fit[i] <- cv.glm(Boston, fit, K = 10)$delta[2]
+}
+
+ggplot(data = NULL, aes(x = 1:10, y = cv.9c.fit)) +
+  geom_line() +
+  theme_bw()
+# this makes it look like degree of 3 is optimal, and then it starts to overfit
+
+#9d)
+fit.9d.splines <- lm(nox ~ bs(dis, df = 4), data = Boston)
+summary(fit.9d.splines)
+pred.9d.splines <- predict(fit.9d.splines, Boston)
+ggplot(data = NULL, aes(x = Boston$dis, y = pred.9d.splines)) +
+  geom_line() +
+  geom_point(data = Boston, aes(x = dis, y = nox), alpha = 0.1) + 
+  theme_bw()
+# this seems to be a good fit, although it is hard to tell at high values of dis
+
+
+#9e)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
