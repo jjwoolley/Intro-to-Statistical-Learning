@@ -142,12 +142,36 @@ fit.8d.bagg <- randomForest(Sales ~., mtry = 10,
 pred.8d.bagg <- predict(fit.8d.bagg, carseats.test)
 
 mse.8d <- mean((pred.8d.bagg - carseats.test$Sales)^2)
+mse.8d
 # bagging decreased the test mse by about 40%
 importance(fit.8d.bagg)
 # Price and ShelveLoc appear to be the most important vars
 
 
 #8e)
+fit.8e.rf <- randomForest(Sales~., mtry = 3, data = carseats.train,
+                          importance = T,
+                          ntree = 500)
+pred.8e.rf <- predict(fit.8e.rf, carseats.test)
+mse.8e <- mean((pred.8e.rf - carseats.test$Sales)^2)
+mse.8e
+# the mse is larger than from 8d, but less than from 8b
+importance(fit.8e.rf)
+# Price and ShelveLoc are still the most important
+
+
+#8f)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
