@@ -72,7 +72,7 @@ mean(c(0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, 0.75))
 # error resulting from random forests on this data set for a more comprehensive
 # range of values for mtry and ntree. You can model your
 # plot after Figure 8.10. Describe the results obtained
-data(Boston)
+data("Boston")
 boston.split <- initial_split(Boston, prop = 1/2)
 boston.train <- training(boston.split)
 boston.test <- testing(boston.split)
@@ -105,8 +105,57 @@ ggplot(data = NULL, aes(x = 1:500, y = fit.7.rf.p$test$mse)) +
 
 
 #8a)
+data("Carseats")
+carseats.split <- initial_split(Carseats, prop = 1/2)
+carseats.train <- training(carseats.split)
+carseats.test <- testing(carseats.split)
+
+#8b)
+fit.8b.tree <- tree(Sales ~., data = carseats.train)
+
+plot(fit.8b.tree)
+text(fit.8b.tree, pretty = 0)
+
+pred.8b.tree <- predict(fit.8b.tree, newdata = carseats.test)
+mse.8b <- mean((pred.8b.tree - carseats.test$Sales)^2)
+mse.8b
+
+#8c)
+cv.carseats <- cv.tree(fit.8b.tree, FUN = prune.tree)
+plot(cv.carseats)
+plot(cv.carseats$k, cv.carseats$dev, type = "b")
+
+#deviation min appears to be at k = 6
+
+prune.8c <- prune.tree(fit.8b.tree, best = 14)
+pred.8c.prune <- predict(prune.8c, carseats.test)
+mse.8c <- mean((pred.8c.prune - carseats.test$Sales)^2)
+# in this case, pruning does not appear to have a large impact on test mse
+# in some cases it is better, in some it is worse
 
 
-predict(fit.7.rf.p2$fit, boston.test)[1]
-rf.boston.p$test$predicted[1]
-predict(fit.7.rf.p, boston.test, type = "raw")[1]
+#8d)
+fit.8d.bagg <- randomForest(Sales ~., mtry = 10, 
+                            data = carseats.train,
+                            importance = T,
+                            ntree = 500)
+pred.8d.bagg <- predict(fit.8d.bagg, carseats.test)
+
+mse.8d <- mean((pred.8d.bagg - carseats.test$Sales)^2)
+# bagging decreased the test mse by about 40%
+importance(fit.8d.bagg)
+# Price and ShelveLoc appear to be the most important vars
+
+
+#8e)
+
+
+
+
+
+
+
+
+
+
+
