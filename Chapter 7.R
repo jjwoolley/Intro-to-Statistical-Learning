@@ -259,17 +259,139 @@ ggplot(data = NULL, aes(x = Boston$dis, y = pred.9d.splines)) +
 
 
 #9e)
+rss.9e.bs <- rep(NA, 10)
+
+for(i in 3:10) {
+  fit <- lm(nox ~ bs(dis, df = i), data = Boston)
+  rss.9e.bs[i] <- sum(fit$residuals^2)
+}
+rss.9e.bs
+
+ggplot(data = NULL, aes(x = 3:10, y = rss.9e.bs[3:10])) +
+  geom_line() +
+  xlab("Degrees of Freedom") +
+  ylab("RSS") +
+  theme_classic()
+# RSS decreases sharply until 5 DF, then another sharp decrease at 10
+
+#9f)
+cv.9f.bs <- rep(NA, 10)
+for(i in 3:10){
+  fit <- glm(nox ~ bs(dis, df = i), data = Boston)
+  cv.9f.bs[i] <- cv.glm(data = Boston, fit, K=10)$delta[2]
+}
+cv.9f.bs
+which.min(cv.9f.bs)
+
+ggplot(data = NULL, aes(x = 3:10, y = cv.9f.bs[3:10])) +
+  geom_line() +
+  xlab("Degrees of Freedom") +
+  ylab("CV Error") +
+  theme_bw()
+# 5 degrees of freedom seems like a good choice
 
 
+#10a)
+data("College")
+college.split <- initial_split(College)
+college.train <- training(college.split)
+college.test <- testing(college.split)
+
+reg.10a.full <- regsubsets(Outstate ~., nvmax = 18, method = "forward",
+                           data = college.train)
+reg10a.summ <- summary(reg.10a.full)
+which.min(reg10a.summ$bic)
+which.min(reg10a.summ$cp)
+which.max(reg10a.summ$adjr2)
+
+vars.10a <- names(coef(reg.10a.full, 11))[-1]
+
+lm.10a <- lm(Outstate ~ Private + Apps + Accept + Top10perc + F.Undergrad +
+               Room.Board + PhD + Terminal + perc.alumni + Expend + Grad.Rate,
+             data = college.train)
+summary(lm.10a)
+pred.10a.lm <- predict(lm.10a, newdata = college.test)
+mean((pred.10a.lm - college.test$Outstate)^2)
 
 
+#10b)
+fit.10b.gam <- gam(Outstate ~ Private + s(Apps, 2) + s(Accept, 2) + s(Top10perc, 2)
+                   + s(F.Undergrad, 2) + s(Room.Board, 2) + s(PhD, 2) 
+                   + s(Terminal, 2) + s(perc.alumni, 2) + s(Expend, 5) + s(Grad.Rate, 2),
+                   data = college.train)
+summary(fit.10b.gam)
+
+par(mfrow = c(3, 3))
+plot(fit.10b.gam, se = T, col = "red")
 
 
+#10c)
+pred.10b.gam <- predict(fit.10b.gam, newdata = college.test)
+mean((pred.10b.gam - college.test$Outstate)^2)
+# it has lower mse than the linear model
 
 
+#10d)
+summary(fit.10b.gam)
+# Expend, Accept, and Apps appear to have a nonlinear relationship with Outstate
 
 
+#11a)
+X1.11a <- rnorm(100)
+X2.11a <- rnorm(100)
+B0 <- -2
+B1 <- 7
+B2 <- 5
+eps <- rnorm(100)
 
+Y.11a <- B0 + B1 * X1.11a + B2 * X2.11a + eps
+
+#11b)
+B1.11a <- 1
+B2.11a <- 1
+
+#11c)
+a.11c <- Y.11a - B1.11a * X1.11a
+B2.11c <- lm(a.11c ~ X2.11a)$coef[2]
+B2.11c
+
+#11d)
+a.11d <- B2.11c * X2.11a
+B1.11d <- lm(a.11d ~ X1.11a)$coef[2]
+B1.11d
+
+#11e)
+b.hat.0 <- rep(0, 1000)
+b.hat.1 <- rep(0, 1000)
+b.hat.2 <- rep(0, 1000)
+
+for(i in 1:1000){
+  a <- Y.11a - b.hat.1[i] * X1.11a
+  b.hat.2[i] <- lm(a ~ X2.11a)$coef[2]
+  
+  a <- Y.11a - b.hat.2[i] * X2.11a
+  b.hat.0[i] <- lm(a.2 ~ X1.11a)$coef[1]
+  
+  b.hat.1[i+1] <- lm(a ~ X1.11a)$coef[2]
+}
+
+ggplot(data = NULL, aes(x = 1:1000, y = b.hat.0)) +
+  geom_line(color = "blue") + 
+  geom_line(aes(x = 1:1000, y = b.hat.2), color ="red") +
+  geom_line(aes(x = 1:1000, y = b.hat.1[-1]), color ="brown") +
+  xlab("Iteration") +
+  ylab("B-hat Value")
+
+#11f)
+fit.11f.lm <- lm(Y.11a ~ X1.11a + X2.11a)
+summary(fit.11f.lm)
+# the numbers perfectly match up
+
+#11g)
+# It took only 2 iterations to get extremely close to the multiple regression estimates
+
+#12)
+# I'll come back to this one
 
 
 
