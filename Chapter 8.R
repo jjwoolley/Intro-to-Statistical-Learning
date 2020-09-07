@@ -32,7 +32,6 @@ library("glmnet")
 # Explain why this is the case. You can begin with (8.12) in Algorithm 8.2.
 
 # ri <- ri - lambda f(xi)
-# 
 
 
 #3)
@@ -314,19 +313,73 @@ summary(fit.10f.best)
 # Runs, at bats, and hits seem to be the most important 
 
 
+#10g)
+fit.10g.rf <- randomForest(Salary_log ~., data = hitters.train, ntree = 500, mtry = 19)
+pred.10g.rf <- predict(fit.10g.rf, hitters.test)
+mse.10g <- mean((pred.10g.rf - hitters.test$Salary_log)^2)
+mse.10g
+# test mse of 23%
+
+#11a)
+data("Caravan")
+Caravan$Purchase <- ifelse(Caravan$Purchase == "Yes", 1, 0)
+caravan.train <- Caravan[1:1000,]
+caravan.test <- Caravan[-c(1:1000),]
+
+#11b)
+fit.11b.boost <- gbm(Purchase ~., data = caravan.train, distribution = "gaussian",
+                     n.trees = 1000, shrinkage = 0.01)
+summary(fit.11b.boost)
+# Ppersaut and Mkoopkla appear to be the most important predictors
+
+#11c)
+pred.11c.boost <- predict(fit.11b.boost, caravan.test, type = "response")
+pred11c <- ifelse(pred.11c.boost > 0.2, 1, 0)
+table(caravan.test$Purchase, pred11c)
+# 14/50 = 28% of individuals predicted to make a purchase actually make one
+
+# logistic regression
+fit.11c.logit <- glm(Purchase ~., data = caravan.train, family = "binomial")
+summary(fit.11c.logit)
+pred.11c.logit <- predict(fit.11c.logit, caravan.test, type = "response")
+pred11c.log <- ifelse(pred.11c.logit > 0.2, 1, 0)
+table(caravan.test$Purchase, pred11c.log)
+# 58/408 ~ 14% of individuals predicted to make a purchase actually make one
+
+# the boosted model is better at predicting individuals who actually make a purchase (as a percentage)
 
 
 
+#12)
+# looking at weekly stock market data
+data("Weekly")
+Weekly$BinDirection <- ifelse(Weekly$Direction == "Up", 1, 0)
+weekly.split <- initial_split(Weekly, strata = Direction)
+weekly.train <- training(weekly.split)
+weekly.test <- testing(weekly.split)
 
+#boosting, bagging, random forests, logistic regression
+# boosting
+fit.12.boost <- gbm(BinDirection ~. -Year -Today -Direction, data = weekly.train,
+                    distribution = "bernoulli", n.trees = 5000)
+yhat.boost <- predict(fit.12.boost, weekly.test, n.trees = 5000, type = "response")
+yhat.pred <- ifelse(yhat.boost > 0.5, 1, 0)
+table(yhat.pred, weekly.test$Direction)
+mean(yhat.pred != weekly.test$BinDirection)
 
+# bagging
+fit.12.bag <- randomForest(Direction ~. -Year -Today -BinDirection, data = weekly.train, mtry = 6)
+yhat.bag <- predict(fit.12.bag, weekly.test, n.trees = 5000, type = "response")
+table(yhat.bag, weekly.test$Direction)
+mean(yhat.bag != weekly.test$Direction)
 
+#random forest
+fit.12.rf <- randomForest(Direction ~. -Year -Today -BinDirection, data = weekly.train, mtry = 2)
+yhat.bag.rf <- predict(fit.12.rf, weekly.test, n.trees = 5000, type = "response")
+table(yhat.bag.rf, weekly.test$Direction)
+mean(yhat.bag.rf != weekly.test$Direction)
 
-
-
-
-
-
-
+# they were all about the same
 
 
 
