@@ -16,6 +16,8 @@ library("GGally")
 library("boot")
 library("tree")
 library("randomForest")
+library("gbm")
+library("glmnet")
 
 
 ### CONCEPTUAL------------------------------------------------------------------
@@ -130,6 +132,7 @@ plot(cv.carseats$k, cv.carseats$dev, type = "b")
 prune.8c <- prune.tree(fit.8b.tree, best = 14)
 pred.8c.prune <- predict(prune.8c, carseats.test)
 mse.8c <- mean((pred.8c.prune - carseats.test$Sales)^2)
+mse.8c
 # in this case, pruning does not appear to have a large impact on test mse
 # in some cases it is better, in some it is worse
 
@@ -160,7 +163,159 @@ importance(fit.8e.rf)
 # Price and ShelveLoc are still the most important
 
 
-#8f)
+#9a)
+data("OJ")
+oj.split <- initial_split(OJ, prop = 800/1070)
+oj.train <- training(oj.split)
+oj.test <- testing(oj.split)
+
+#9b)
+
+fit.9b.tree <- tree(Purchase ~., data = oj.train)
+summary(fit.9b.tree)
+# it uses the vars LoyalCH, PriceDiff, and ListPriceDiff to construct the model
+# there is a training error of 14%
+# there are 8 terminal nodes
+
+#9c)
+fit.9b.tree
+
+
+#9d)
+plot(fit.9b.tree)
+text(fit.9b.tree, pretty = 0)
+# LoyalCH divides individuals in the first two branches
+# individuals with low CH loyalty appear to be more likely to select MM
+
+
+#9e)
+pred.9e.tree <- predict(fit.9b.tree, oj.test, type = "class")
+table(oj.test$Purchase, pred.9e.tree)
+err.9e <- 1 - mean(pred.9e.tree == oj.test$Purchase)
+err.9e
+summary(fit.9b.tree)
+# 19% test error rate
+# 17% training error rate
+
+#9f)
+cv.9f.tree <- cv.tree(fit.9b.tree, FUN = prune.tree, K = 10)
+cv.9f.tree
+
+#9g)
+plot(cv.9f.tree)
+
+
+#9h)
+# optimal tree size is when dev is the smallest which corresponds to size = 5
+
+
+#9i)
+prune.9i.tree <- prune.tree(fit.9b.tree, best = 5)
+
+
+#9j)
+summary(prune.9i.tree)
+# training error rate of 18%
+# about the same as the original model
+
+
+#9k)
+pred.9k.prune <- predict(prune.9i.tree, oj.test, type = "class")
+err.9k <- 1 - mean(pred.9k.prune == oj.test$Purchase)
+err.9k
+# test error of 20%
+# this is higher than the original model (unpruned)
+plot(prune.9i.tree)
+text(prune.9i.tree, pretty = 0)
+
+
+#10a)
+data(Hitters)
+Hitters <- Hitters %>%
+  drop_na(Salary) %>%
+  mutate(Salary_log = log(Salary)) %>%
+  select(-Salary)
+
+#10b)
+hitters.train <- Hitters[1:200,]
+hitters.test <- Hitters[-c(1:200),]
+
+#10c)
+
+shrink.test <- seq(0.001, 0.6, length.out = 50)
+mse.train <- rep(NA, length(shrink.test))
+mse.test <- rep(NA, length(shrink.test))
+
+set.seed(1)
+
+for(i in 1:length(shrink.test)) {
+  fit <- gbm(Salary_log ~., 
+            data = hitters.train,
+            distribution = "gaussian",
+            n.trees = 1000,
+            shrinkage = shrink.test[i])
+  t.mse.shrink[i] <- fit$train.error[1000]
+  p.train <- predict(fit, hitters.train, n.trees = 1000)
+  mse.train[i] <- mean((p.train - hitters.train$Salary_log)^2)
+  # t == t.mse.shrink
+  
+  p.test <- predict(fit, hitters.test)
+  mse.test[i] <- mean((p.test - hitters.test$Salary_log)^2)
+}
+
+ggplot(data = NULL, aes(x = shrink.test, y = mse.train)) +
+  geom_line() +
+  xlab("shrinkage value") +
+  ylab("training mse") + 
+  theme_bw()
+
+# this tells that the minimum training mse was .2%
+min(mse.train)
+shrink.test[which.min(mse.train)]
+
+#this gives us a minimum test mse of 25%
+min(mse.test)
+shrink.test[which.min(mse.test)]
+
+#10d)
+ggplot(data = NULL, aes(x = shrink.test, y = mse.test)) +
+  geom_line() +
+  xlab("shrinkage value") +
+  ylab("testing mse") + 
+  theme_bw() +
+  ylim(0.2, 0.6)
+
+
+#10e)
+# linear regression
+fit.10e.lm <- lm(Salary_log ~., data = hitters.train)
+pred.10e.lm <- predict(fit.10e.lm, hitters.test)
+mse.10e.lm <- mean((pred.10e.lm - hitters.test$Salary_log)^2)
+mse.10e.lm
+# test mse of 49%
+
+# lasso regression
+mat.10e <- model.matrix(Salary_log ~., hitters.train)[,-1]
+fit.10e.lasso <- cv.glmnet(x = mat.10e, y = hitters.train$Salary_log, alpha = 1)
+lambda.best = fit.10e.lasso$lambda.min
+lambda.best
+
+mat.10e.test <- model.matrix(Salary_log ~., hitters.test)[,-1]
+pred.10e.lasso <- predict(fit.10e.lasso, s = lambda.best, newx = mat.10e.test)[,1]
+mse.10e.lasso <- mean((pred.10e.lasso - hitters.test$Salary_log)^2)
+mse.10e.lasso
+# test mse of 47%
+
+
+#10f)
+fit.10f.best <- gbm(Salary_log ~., data = hitters.train, distribution = "gaussian",
+                    n.trees = 1000, shrinkage = shrink.test[which.min(mse.test)])
+summary(fit.10f.best)
+# Runs, at bats, and hits seem to be the most important 
+
+
+
+
 
 
 
